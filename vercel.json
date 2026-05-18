@@ -1,7 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-  "env": {
-    "VITE_SUPABASE_URL": "https://cpvdvvncwlqcbdwzgwmh.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdmR2dm5jd2xxY2Jkd3pnd21oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzg1MzUsImV4cCI6MjA5NDY1NDUzNX0.c446Zam12wKnV4_EmudPw5T3j5rACmAGJvc0M5tm5Ck"
-  }
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
