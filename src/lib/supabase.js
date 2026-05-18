@@ -3,16 +3,20 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    '❌ Missing Supabase env vars.\n' +
-    'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel → Project Settings → Environment Variables'
-  )
+// Check if env vars are properly configured
+const isConfigured = supabaseUrl && supabaseAnonKey && 
+  supabaseUrl.includes('supabase') && 
+  supabaseAnonKey.length > 20
+
+if (!isConfigured) {
+  console.error('❌ Supabase not configured correctly!')
+  console.error('VITE_SUPABASE_URL:', supabaseUrl || 'NOT SET')
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET (length: ' + supabaseAnonKey.length + ')' : 'NOT SET')
 }
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
+  supabaseAnonKey || 'placeholder_key'
 )
 
 export async function getCurrentUser() {

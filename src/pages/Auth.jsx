@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Brain, Eye, EyeOff } from 'lucide-react'
+import { Brain, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { signIn, signUp } from '../lib/supabase.js'
 
 export default function Auth() {
@@ -16,10 +16,23 @@ export default function Auth() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    
+    if (!form.email || !form.password) {
+      setError('Please fill in all fields')
+      setLoading(false)
+      return
+    }
+    
     try {
       if (mode === 'signup') {
-        const { error } = await signUp(form.email, form.password, form.name)
+        const { error, data } = await signUp(form.email, form.password, form.name)
         if (error) throw error
+        // For signup, check if user needs email confirmation
+        if (data?.user?.identities?.length === 0) {
+          setError('This email is already registered. Try signing in.')
+          setLoading(false)
+          return
+        }
         nav('/dashboard')
       } else {
         const { error } = await signIn(form.email, form.password)
@@ -27,7 +40,17 @@ export default function Auth() {
         nav('/dashboard')
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      console.error('Auth error:', err)
+      // Better error messages
+      if (err.message?.includes('fetch') || err.message?.includes('network')) {
+        setError('Network error. Check your connection and Supabase URL is configured.')
+      } else if (err.message?.includes('Invalid login') || err.message?.includes('invalid credentials')) {
+        setError('Invalid email or password. Please try again.')
+      } else if (err.message?.includes('User already registered')) {
+        setError('This email is already registered. Please sign in.')
+      } else {
+        setError(err.message || 'Something went wrong. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -97,8 +120,8 @@ export default function Auth() {
             </div>
 
             {error && (
-              <div style={{ background: 'var(--red-light)', color: 'var(--red)', padding: '10px 14px', borderRadius: 8, fontSize: 14 }}>
-                {error}
+              <div style={{ background: 'var(--red-light)', color: 'var(--red)', padding: '12px 16px', borderRadius: 8, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AlertCircle size={18} />{error}
               </div>
             )}
 
