@@ -1,134 +1,114 @@
 # FocusLens — ADHD Screening App
 
-Production-grade ADHD screening web app built with React, Supabase, and Groq AI.
+**No backend required.** Runs entirely in your browser with localStorage.
 
 ---
 
-## Tech Stack
+## 🚀 Quick Start
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite |
-| Auth + Database | Supabase (Postgres + RLS) |
-| AI Analysis | Groq API (llama-3.3-70b) via Edge Function |
-| Screening Framework | WHO ASRS v1.1 (18 questions) |
-| Charts | Recharts |
-| Hosting | Vercel (frontend) + Supabase (backend) |
-
----
-
-## Setup — Step by Step
-
-### 1. Supabase project
-
-1. Go to [supabase.com](https://supabase.com) → New project
-2. Dashboard → **SQL Editor** → paste contents of `supabase/schema.sql` → Run
-3. Dashboard → **Settings → API** → copy:
-   - `Project URL` → `VITE_SUPABASE_URL`
-   - `anon public` key → `VITE_SUPABASE_ANON_KEY`
-4. Dashboard → **Authentication → Email** → Enable email signups
-
-### 2. Environment variables
-
-```bash
-cp .env.example .env
-# Fill in your Supabase URL and anon key
-```
-
-### 3. Groq API key
-
-1. Get your key at [console.groq.com](https://console.groq.com)
-2. Install Supabase CLI: `npm install -g supabase`
-3. Login: `supabase login`
-4. Link project: `supabase link --project-ref YOUR_PROJECT_REF`
-5. Set the secret (NEVER put this in .env):
-   ```bash
-   supabase secrets set GROQ_API_KEY=your_groq_api_key_here
-   ```
-6. Deploy the edge function:
-   ```bash
-   supabase functions deploy analyze-adhd
-   ```
-
-### 4. Run locally
-
+### **Local Development**
 ```bash
 npm install
 npm run dev
-# Open http://localhost:5173
+# Opens at http://localhost:5173
 ```
 
-### 5. Deploy to production (Vercel)
-
+### **Deploy to Vercel**
 ```bash
-npm install -g vercel
-vercel
-# Follow prompts — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY as env vars
+npm run build
+npx vercel
 ```
 
-Or push to GitHub and connect repo to Vercel dashboard.
+That's it. No environment variables, no database setup, no API keys.
 
 ---
 
-## Project Structure
+## ✨ Features
+
+- ✅ **18-question WHO ASRS v1.1 screening** — Validated ADHD assessment
+- ✅ **Progress tracking** — Charts showing score trends over time
+- ✅ **Monthly insights** — Average scores and risk breakdown by month
+- ✅ **Comparison view** — Latest vs previous screening side-by-side
+- ✅ **Auto-save** — Resume screening mid-test
+- ✅ **Completely private** — All data stored locally in your browser
+- ✅ **No signup required** — Just create a local account (stored in localStorage)
+- ✅ **Smooth Material Design UI** — Flutter-inspired design system
+
+---
+
+## 📊 How It Works
+
+1. **Sign up** — Creates a local account (no server, just localStorage)
+2. **Take screening** — Answer 18 questions (5 minutes)
+3. **Get results** — See your score, risk level, and detailed breakdown
+4. **Track progress** — Take multiple screenings to see trends over time
+
+All data stays in your browser. Nothing is sent to any server.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 + Vite |
+| Routing | React Router v6 |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Storage | localStorage (no backend) |
+| Styling | CSS with Material Design principles |
+
+---
+
+## 📁 Project Structure
 
 ```
 src/
   pages/
     Landing.jsx       # Public landing page
-    Auth.jsx          # Sign up / Sign in
-    Dashboard.jsx     # User home — history and stats
-    Screening.jsx     # The 18-question test + demographics
-    Results.jsx       # Full results with charts and AI report
+    Auth.jsx          # Sign up / Sign in (localStorage)
+    Dashboard.jsx     # User home with history, charts, stats
+    Screening.jsx     # 18-question test + demographics
+    Results.jsx       # Full results with charts
   lib/
-    supabase.js       # Supabase client + DB helpers
-    scoring.js        # ASRS v1.1 local scoring algorithm
-    questions.js      # WHO ASRS question bank + demographics
+    storage.js        # localStorage-based auth and data persistence
+    scoring.js        # ASRS v1.1 scoring algorithm
+    questions.js      # WHO ASRS question bank
   context/
     AuthContext.jsx   # Global auth state
-supabase/
-  schema.sql          # Run once in Supabase SQL editor
-  functions/
-    analyze-adhd/     # Groq API edge function (secure)
 ```
 
 ---
 
-## Security Model
+## 🔐 Privacy & Security
 
-- **Groq API key** lives ONLY in Supabase Edge Function secrets — never in frontend
-- **Row Level Security** on Supabase means users can only read their own data
-- **No raw audio/video** stored — only questionnaire answers (JSONB)
-- **Anonymized aggregate view** available for research without exposing any user data
-- Auth uses Supabase JWT — tokens auto-refresh
-
----
-
-## Compliance Notes
-
-- ⚕️ Screener only — "not a medical diagnosis" disclaimer shown at multiple points
-- 🇮🇳 DPDP Act (India) aligned — no unnecessary data collection
-- 🇪🇺 GDPR aligned — user can delete account (cascades to results)
-- 🇺🇸 HIPAA-aligned practices — but app is not a HIPAA-covered entity
+- ✅ **No server** — Everything runs in your browser
+- ✅ **No tracking** — No analytics, no cookies, no external requests
+- ✅ **No data collection** — Your data never leaves your device
+- ✅ **Export/delete** — Clear localStorage to delete all data
 
 ---
 
-## Adding Payments Later (Razorpay)
+## ⚠️ Important Disclaimer
 
-```bash
-npm install razorpay
-```
-
-Add to Supabase: `user_plan` column on a `profiles` table.
-Gate `/results` page — free users see Part A only; paid users see full AI report.
+**FocusLens is a screening tool only.** It is not a medical diagnosis. Results should be discussed with a qualified healthcare professional for proper evaluation.
 
 ---
 
-## Roadmap
+## 📝 License
 
-- [ ] Razorpay subscription (freemium → paid AI report)
-- [ ] React Native mobile app (Expo)
-- [ ] Progress tracking charts across multiple screenings
-- [ ] B2B white-label mode (custom branding via URL param)
-- [ ] PDF report export
-- [ ] Clinician dashboard (separate admin role in Supabase)
+MIT License - feel free to use, modify, and distribute.
+
+---
+
+## 🎯 Roadmap
+
+- [ ] Export results as PDF
+- [ ] Dark mode
+- [ ] Multi-language support
+- [ ] Offline PWA support
+- [ ] Data export/import (JSON)
+
+---
+
+**Built with ❤️ for better mental health awareness**
