@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, Plus, Clock, TrendingUp, LogOut, ChevronRight, AlertCircle, ArrowUp, ArrowDown, Lightbulb, BookOpen } from 'lucide-react'
+import { Brain, Plus, Clock, TrendingUp, LogOut, ChevronRight, AlertCircle, ArrowUp, ArrowDown, Lightbulb, BookOpen, Star } from 'lucide-react'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useAuth } from '../context/AuthContext.jsx'
 import { signOut, getUserHistory, hasUserPaid } from '../lib/storage.js'
