@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Brain, Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { signIn, signUp } from '../lib/supabase.js'
+import { Brain, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
+import { signIn, signUp } from '../lib/storage.js'
 
 export default function Auth() {
   const [params] = useSearchParams()
@@ -10,30 +10,34 @@ export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
+  const [pendingConfirmation, setPendingConfirmation] = useState(false)
   const nav = useNavigate()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
-    
+
     if (!form.email || !form.password) {
       setError('Please fill in all fields')
       setLoading(false)
       return
     }
-    
+
     try {
       if (mode === 'signup') {
         const { error, data } = await signUp(form.email, form.password, form.name)
         if (error) throw error
-        // For signup, check if user needs email confirmation
         if (data?.user?.identities?.length === 0) {
           setError('This email is already registered. Try signing in.')
           setLoading(false)
           return
         }
-        nav('/dashboard')
+        if (data?.session) {
+          nav('/dashboard')
+        } else {
+          setPendingConfirmation(true)
+        }
       } else {
         const { error } = await signIn(form.email, form.password)
         if (error) throw error
@@ -41,7 +45,6 @@ export default function Auth() {
       }
     } catch (err) {
       console.error('Auth error:', err)
-      // Better error messages
       if (err.message?.includes('fetch') || err.message?.includes('network')) {
         setError('Network error. Check your connection and Supabase URL is configured.')
       } else if (err.message?.includes('Invalid login') || err.message?.includes('invalid credentials')) {
@@ -56,10 +59,30 @@ export default function Auth() {
     }
   }
 
+  if (pendingConfirmation) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--surface-2)' }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          <div className="card" style={{ padding: 40, textAlign: 'center' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--teal-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Mail size={28} color="var(--teal-dark)" />
+            </div>
+            <h2 style={{ fontSize: 24, marginBottom: 10 }}>Check your email</h2>
+            <p style={{ color: 'var(--ink-3)', fontSize: 15, lineHeight: 1.7, marginBottom: 24 }}>
+              We sent a confirmation link to <strong style={{ color: 'var(--ink)' }}>{form.email}</strong>. Click it to activate your account, then sign in.
+            </p>
+            <button className="btn-outline" onClick={() => setPendingConfirmation(false)} style={{ padding: '10px 24px' }}>
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--surface-2)' }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <Brain size={26} color="var(--teal)" />

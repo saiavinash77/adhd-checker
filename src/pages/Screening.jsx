@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, ChevronLeft, ChevronRight, Save } from 'lucide-react'
+import { Brain, ChevronLeft, ChevronRight, Save, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ASRS_QUESTIONS, ANSWER_OPTIONS, DEMOGRAPHICS_QUESTIONS } from '../lib/questions.js'
 import { calculateASRSScore } from '../lib/scoring.js'
-import { saveScreeningResult } from '../lib/supabase.js'
-import { getAIAnalysis } from '../lib/groq.js'
+import { saveScreeningResult } from '../lib/storage.js'
+
 
 const STEPS = ['intro', 'demographics', 'screening', 'submitting']
 
@@ -14,6 +14,28 @@ export default function Screening() {
   const nav = useNavigate()
 
   const [step, setStep] = useState('intro')
+  const [checkingPayment, setCheckingPayment] = useState(true)
+
+  useEffect(() => {
+    hasUserPaid().then(paid => {
+      if (!paid) {
+        nav('/payment', { replace: true })
+      } else {
+        setCheckingPayment(false)
+      }
+    })
+  }, [nav])
+
+  if (checkingPayment) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Lock size={32} color="var(--ink-4)" style={{ marginBottom: 12 }} />
+          <p style={{ color: 'var(--ink-3)' }}>Checking access…</p>
+        </div>
+      </div>
+    )
+  }
   const [demographics, setDemographics] = useState({})
   const [answers, setAnswers] = useState(Array(18).fill(null))
   const [currentQ, setCurrentQ] = useState(0)
@@ -55,12 +77,8 @@ export default function Screening() {
     setStep('submitting')
     try {
       const score = calculateASRSScore(answers)
-      let aiAnalysis = null
-      try {
-        aiAnalysis = await getAIAnalysis(answers, score.totalScore, demographics)
-      } catch {
-        aiAnalysis = { summary: 'AI analysis unavailable. Your score has been saved.', sections: [] }
-      }
+      // No AI analysis - just save the score
+      const aiAnalysis = null
       const { data, error } = await saveScreeningResult(user.id, answers, score.totalScore, aiAnalysis, score.riskLevel)
       if (error) throw error
       localStorage.removeItem('fl_screening_draft')

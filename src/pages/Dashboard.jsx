@@ -1,10 +1,82 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, Plus, Clock, TrendingUp, LogOut, ChevronRight, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react'
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { Brain, Plus, Clock, TrendingUp, LogOut, ChevronRight, AlertCircle, ArrowUp, ArrowDown, Lightbulb, BookOpen } from 'lucide-react'
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useAuth } from '../context/AuthContext.jsx'
-import { signOut, getUserHistory } from '../lib/supabase.js'
+import { signOut, getUserHistory } from '../lib/storage.js'
 import { RISK_LABELS } from '../lib/scoring.js'
+
+const MOODS = [
+  { emoji: '\u{1F60A}', label: 'Great', value: 5 },
+  { emoji: '\u{1F642}', label: 'Good', value: 4 },
+  { emoji: '\u{1F610}', label: 'Okay', value: 3 },
+  { emoji: '\u{1F641}', label: 'Low', value: 2 },
+  { emoji: '\u{1F62B}', label: 'Struggling', value: 1 }
+]
+
+const TIPS_BY_RISK = {
+  low: [
+    'Your screening suggests low symptom indicators. Keep maintaining healthy routines — they\'re working for you.',
+    'Stay mindful of stress triggers. Even small disruptions can temporarily impact focus.',
+    'Exercise and good sleep hygiene are protective factors. Keep at it.'
+  ],
+  moderate: [
+    'Try the "Pomodoro Technique": 25 min focus, 5 min break. It helps bridge attention gaps.',
+    'External structure helps. Try visual checklists or body-doubling (working alongside someone).',
+    'Reduce decision fatigue — plan your next day\'s priorities the night before.',
+    'Consider tracking your energy levels across the day. You might spot focus patterns you never noticed.'
+  ],
+  high: [
+    'Consider sharing these results with a healthcare professional. You deserve proper support.',
+    'Break tasks into absurdly small steps. "Open laptop" is a valid first step.',
+    'Use the "2-minute rule": if it takes under 2 minutes, do it immediately. It reduces mental clutter.',
+    'Fidget tools, background noise (brown/grey noise), or standing desks can help channel hyperactivity.'
+  ]
+}
+
+const RESOURCES = [
+  { title: 'ADHD & the Scattered Mind', desc: 'Understanding the neuroscience behind inattention and executive dysfunction.', icon: <Brain size={18} /> },
+  { title: 'Sleep & Focus Connection', desc: 'How sleep quality directly impacts attention, impulse control, and emotional regulation.', icon: <Clock size={18} /> },
+  { title: 'Managing Task Paralysis', desc: 'Practical techniques to break the freeze-response when facing overwhelming tasks.', icon: <Lightbulb size={18} /> },
+  { title: 'When to See a Professional', desc: 'A guide to finding the right psychiatrist or psychologist for an ADHD evaluation.', icon: <Star size={18} /> }
+]
+
+const CHECKIN_KEY = 'fl_checkin_log'
+
+function getCheckinLog() {
+  try { return JSON.parse(localStorage.getItem(CHECKIN_KEY) || '[]') } catch { return [] }
+}
+
+function saveCheckinLog(log) {
+  localStorage.setItem(CHECKIN_KEY, JSON.stringify(log))
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function computeStreak(log) {
+  if (!log.length) return 0
+  const sorted = [...new Set(log.map(e => e.date))].sort().reverse()
+  let streak = 0
+  const today = todayStr()
+  const check = sorted[0] === today ? 0 : sorted[0] === getYesterday() ? 1 : 99
+  if (check === 99) return 0
+  for (let i = check; i < sorted.length; i++) {
+    const expected = new Date()
+    expected.setDate(expected.getDate() - (i - check))
+    const expStr = expected.toISOString().split('T')[0]
+    if (sorted[i] === expStr) streak++
+    else break
+  }
+  return streak
+}
+
+function getYesterday() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().split('T')[0]
+}
 
 function RiskBadge({ level }) {
   const r = RISK_LABELS[level] || RISK_LABELS.low
@@ -20,6 +92,10 @@ export default function Dashboard() {
   const nav = useNavigate()
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [checkin, setCheckin] = useState(null)
+  const [streak, setStreak] = useState(0)
+  const [moodToday, setMoodToday] = useState(null)
+  const [showCheckin, setShowCheckin] = useState(true)
 
   const name = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
 
@@ -28,7 +104,30 @@ export default function Dashboard() {
       setHistory(data || [])
       setLoading(false)
     })
+    const log = getCheckinLog()
+    const today = todayStr()
+    const todayEntry = log.find(e => e.date === today)
+    if (todayEntry) {
+      setMoodToday(todayEntry.mood)
+      setShowCheckin(false)
+    }
+    setStreak(computeStreak(log))
   }, [user.id])
+
+  function handleMood(mood) {
+    const log = getCheckinLog()
+    const today = todayStr()
+    const filtered = log.filter(e => e.date !== today)
+    const updated = [...filtered, { date: today, mood }]
+    saveCheckinLog(updated)
+    setMoodToday(mood)
+    setShowCheckin(false)
+    setStreak(computeStreak(updated))
+  }
+
+  function handleDismissCheckin() {
+    setShowCheckin(false)
+  }
 
   async function handleSignOut() {
     await signOut()
@@ -36,8 +135,6 @@ export default function Dashboard() {
   }
 
   const latest = history[0]
-
-  // Prepare data for progress chart (reverse chronological to chronological)
   const chartData = [...history].reverse().map((r, i) => ({
     date: new Date(r.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
     score: r.total_score,
@@ -45,14 +142,12 @@ export default function Dashboard() {
     id: r.id
   }))
 
-  // Calculate stats
   const avgScore = history.length > 0 ? Math.round(history.reduce((sum, r) => sum + r.total_score, 0) / history.length) : 0
   const highestScore = history.length > 0 ? Math.max(...history.map(r => r.total_score)) : 0
   const lowestScore = history.length > 0 ? Math.min(...history.map(r => r.total_score)) : 0
   const scoreChange = history.length > 1 ? latest.total_score - history[1].total_score : 0
-  const isImproving = scoreChange < 0 // Lower score is better
+  const isImproving = scoreChange < 0
 
-  // Monthly stats
   const monthlyStats = {}
   history.forEach(r => {
     const month = new Date(r.created_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
@@ -68,6 +163,8 @@ export default function Dashboard() {
     count: data.count,
     riskBreakdown: data.avgRisk
   })).reverse()
+
+  const tips = latest ? TIPS_BY_RISK[latest.risk_level] || TIPS_BY_RISK.low : []
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
@@ -100,6 +197,41 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* Daily check-in */}
+        {showCheckin && (
+          <div className="checkin-card">
+            <div>
+              <h3>How are you feeling today?</h3>
+              <p>A quick check-in builds your personal insights over time.</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="checkin-options">
+                {MOODS.map(m => (
+                  <button key={m.value} className={`checkin-mood ${moodToday === m.value ? 'selected' : ''}`}
+                    onClick={() => handleMood(m.value)}
+                    title={m.label}
+                  >
+                    {m.emoji}
+                  </button>
+                ))}
+              </div>
+              <button className="checkin-dismiss" onClick={handleDismissCheckin}>Skip</button>
+            </div>
+          </div>
+        )}
+
+        {/* Streak */}
+        {streak > 0 && (
+          <div className="streak-bar">
+            <span className="streak-fire">{'\u{1F525}'}</span>
+            <span className="streak-count">{streak}</span>
+            <div>
+              <div className="streak-label">day streak</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-4)' }}>Keep showing up for yourself</div>
+            </div>
+          </div>
+        )}
+
         {/* Stats row */}
         {history.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 36 }}>
@@ -114,6 +246,19 @@ export default function Dashboard() {
                   {s.icon} {s.label}
                 </div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 28 }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tips */}
+        {history.length > 0 && tips.length > 0 && (
+          <div className="tips-card">
+            <h3><Lightbulb size={18} color="var(--teal)" /> Tips based on your results</h3>
+            {tips.map((tip, i) => (
+              <div key={i} className="tip-item">
+                <div className="tip-bullet" />
+                <span>{tip}</span>
               </div>
             ))}
           </div>
@@ -245,6 +390,30 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Resources */}
+        {history.length > 0 && (
+          <div className="card" style={{ padding: 32, marginBottom: 28 }}>
+            <h2 style={{ fontSize: 22, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BookOpen size={20} color="var(--teal)" /> Resources
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+              {RESOURCES.map((r, i) => (
+                <div key={i} style={{ padding: '18px 20px', background: 'var(--surface-2)', borderRadius: 12, border: '1px solid transparent', transition: 'all 0.2s', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--teal-light)'; e.currentTarget.style.borderColor = 'var(--teal)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.borderColor = 'transparent' }}
+                  onClick={() => window.open('https://www.nimh.nih.gov/health/topics/attention-deficit-hyperactivity-disorder-adhd', '_blank')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--teal)' }}>
+                    {r.icon}
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{r.title}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.6 }}>{r.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

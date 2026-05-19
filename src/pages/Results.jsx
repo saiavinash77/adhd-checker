@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Brain, ArrowLeft, Download, RefreshCw, AlertCircle, CheckCircle, Info } from 'lucide-react'
+import { Brain, ArrowLeft, RefreshCw, AlertCircle, CheckCircle, Info } from 'lucide-react'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts'
-import { supabase } from '../lib/supabase.js'
+import { getScreeningById } from '../lib/storage.js'
 import { ASRS_QUESTIONS, ANSWER_OPTIONS } from '../lib/questions.js'
 import { RISK_LABELS } from '../lib/scoring.js'
 
@@ -13,10 +13,16 @@ export default function Results() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from('screening_results').select('*').eq('id', id).single().then(({ data }) => {
-      setResult(data)
-      setLoading(false)
-    })
+    getScreeningById(id)
+      .then(({ data, error }) => {
+        if (error) throw error
+        setResult(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Failed to load result:', err)
+        setLoading(false)
+      })
   }, [id])
 
   if (loading) return (

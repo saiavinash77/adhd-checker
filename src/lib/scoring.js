@@ -1,14 +1,3 @@
-import { supabase } from './supabase.js'
-
-// This calls our Supabase Edge Function which holds the Groq API key securely
-export async function getAIAnalysis(answers, totalScore, demographics) {
-  const { data, error } = await supabase.functions.invoke('analyze-adhd', {
-    body: { answers, totalScore, demographics }
-  })
-  if (error) throw error
-  return data
-}
-
 // Local ASRS v1.1 scoring — runs entirely on-device, no API needed
 export function calculateASRSScore(answers) {
   // Part A: Questions 1-6 (higher sensitivity for screening)
