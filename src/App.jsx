@@ -5,6 +5,7 @@ import Auth from './pages/Auth.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Screening from './pages/Screening.jsx'
 import Results from './pages/Results.jsx'
+import Payment from './pages/Payment.jsx'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
       <Route path="/auth" element={user ? <Navigate to="/dashboard" /> : <Auth />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
       <Route path="/screening" element={<ProtectedRoute><Screening /></ProtectedRoute>} />
       <Route path="/results/:id" element={<ProtectedRoute><Results /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />

@@ -3,7 +3,8 @@
 const STORAGE_KEYS = {
   USER: 'focuslens_user',
   SCREENINGS: 'focuslens_screenings',
-  SESSION: 'focuslens_session'
+  SESSION: 'focuslens_session',
+  PAYMENTS: 'focuslens_payments'
 }
 
 // Simple user management
@@ -107,4 +108,35 @@ export async function getScreeningById(id) {
   const screenings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SCREENINGS) || '[]')
   const screening = screenings.find(s => s.id === id)
   return { data: screening, error: screening ? null : { message: 'Not found' } }
+}
+
+// Payment management
+export async function savePayment(userId, paymentId, orderId, amount, status = 'success') {
+  const payments = JSON.parse(localStorage.getItem(STORAGE_KEYS.PAYMENTS) || '[]')
+  
+  const newPayment = {
+    id: crypto.randomUUID(),
+    user_id: userId,
+    payment_id: paymentId,
+    order_id: orderId,
+    amount,
+    status,
+    created_at: new Date().toISOString()
+  }
+  
+  payments.push(newPayment)
+  localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments))
+  
+  return { data: newPayment, error: null }
+}
+
+export async function hasUserPaid(userId) {
+  const payments = JSON.parse(localStorage.getItem(STORAGE_KEYS.PAYMENTS) || '[]')
+  const userPayments = payments.filter(p => p.user_id === userId && p.status === 'success')
+  return userPayments.length > 0
+}
+
+export async function getUserPayments(userId) {
+  const payments = JSON.parse(localStorage.getItem(STORAGE_KEYS.PAYMENTS) || '[]')
+  return payments.filter(p => p.user_id === userId).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Brain, Plus, Clock, TrendingUp, LogOut, ChevronRight, AlertCircle, ArrowUp, ArrowDown, Lightbulb, BookOpen } from 'lucide-react'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useAuth } from '../context/AuthContext.jsx'
-import { signOut, getUserHistory } from '../lib/storage.js'
+import { signOut, getUserHistory, hasUserPaid } from '../lib/storage.js'
 import { RISK_LABELS } from '../lib/scoring.js'
 
 const MOODS = [
@@ -96,10 +96,16 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(0)
   const [moodToday, setMoodToday] = useState(null)
   const [showCheckin, setShowCheckin] = useState(true)
+  const [hasPaid, setHasPaid] = useState(false)
 
   const name = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
 
   useEffect(() => {
+    // Check payment status
+    hasUserPaid(user.id).then(paid => {
+      setHasPaid(paid)
+    })
+    
     getUserHistory(user.id).then(({ data }) => {
       setHistory(data || [])
       setLoading(false)
@@ -191,7 +197,7 @@ export default function Dashboard() {
               {history.length === 0 ? 'Ready for your first screening?' : `You have ${history.length} completed screening${history.length > 1 ? 's' : ''}.`}
             </p>
           </div>
-          <button className="btn-primary" onClick={() => nav('/screening')}>
+          <button className="btn-primary" onClick={() => nav(hasPaid ? '/screening' : '/payment')}>
             <Plus size={18} />
             New screening
           </button>
@@ -425,7 +431,7 @@ export default function Dashboard() {
             <Brain size={40} color="var(--teal-light)" style={{ marginBottom: 16 }} />
             <h3 style={{ fontSize: 22, marginBottom: 10 }}>No screenings yet</h3>
             <p style={{ color: 'var(--ink-3)', marginBottom: 24 }}>Your first screening takes about 5 minutes.</p>
-            <button className="btn-primary" onClick={() => nav('/screening')}>
+            <button className="btn-primary" onClick={() => nav(hasPaid ? '/screening' : '/payment')}>
               <Plus size={16} /> Start screening
             </button>
           </div>
